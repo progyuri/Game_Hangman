@@ -2,6 +2,7 @@
 //
 
 #include <iostream>
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <ctime>
@@ -13,33 +14,6 @@
 using namespace std;
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-
-vector <int> wordsKey = { 1, 2 ,3 ,4 ,5 };
-vector <string> wordsAnimal = { "fish", "dog", "cat", "elephant", "lion", "tiger", "monkey", "zebra", "giraffe", "bear", "kangaroo", "koala", "penguin", "seal", "hippo", "chiken", "wolf", "panda", "frog", "owl", "bunny", "ladybug", "fox", "dragonfly", "sheep", "octopus", "butterfly", "whale", "sheep", "horse", "goat", "pig", "snake" };
-vector <string> wordsP = { "flower", "tree", "grass", "sunflower", "rose", "cactus", "lily", "dandelion", "tulip",  "oak", "birch", "pine", "iris", "lotus", "violet", "dandelion" };
-vector <string> wordsF = { "apple", "peach", "banana", "orange", "strawberry", "grapefruit", "carrot", "potato", "sandwich", "chicken", "beef", "salad", "cake" };
-vector <string> wordsC = { "dress", "shirt", "pants", "skirt", "jeans", "sweater", "jacket", "hat", "shoes", "socks", "gloves", "scarf", "bra", "panties", "boots", "junper", "blouse" };
-vector <string> wordsI = { "pencil", "book", "chair", "table", "computer", "desk", "notebook", "pen", "calculator", "clock", "backpack", "ruler", "scissors", "marker", "board" };
-vector <string> wordsCountries = { "Brazil", "Canada", "Germany", "Japan", "China", "Italy", "England", "Russia", "France", "Australia", "India", "Spain", "USA", "Mexico", "Poland", "Australia", "Cermany", "nepal", "thailand" } },
-
-string word, guessedLetters;
-int length, key;
-
-// Класс необходимый для логики игры
-class Game {
-
-};
-
-// Класс необходимый для вывода результатов в консоль
-class Results {
-
-};
-
-
-void SetXY(short X, short Y) {
-    COORD coord = { X, Y };
-    SetConsoleCursorPosition(hStdOut, coord);
-}
 
 enum ConsoleColor {
     Black = 0,
@@ -57,9 +31,147 @@ enum ConsoleColor {
     White = 15
 };
 
-void SetColor(ConsoleColor text, ConsoleColor background) {
-    SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
-}
+vector <int> wordsKey = { 1, 2 ,3 ,4 ,5 ,6};
+vector <string> wordsAnimals = { "fish", "dog", "cat", "elephant", "lion", "tiger", "monkey", "zebra", "giraffe", "bear", "kangaroo", "koala", "penguin", "seal", "hippo", "chiken", "wolf", "panda", "frog", "owl", "bunny", "ladybug", "fox", "dragonfly", "sheep", "octopus", "butterfly", "whale", "sheep", "horse", "goat", "pig", "snake" };
+vector <string> wordsPlants = { "flower", "tree", "grass", "sunflower", "rose", "cactus", "lily", "dandelion", "tulip",  "oak", "birch", "pine", "iris", "lotus", "violet", "dandelion" };
+vector <string> wordsFruits = { "apple", "peach", "banana", "orange", "strawberry", "grapefruit", "carrot", "potato", "sandwich", "chicken", "beef", "salad", "cake" };
+vector <string> wordsClothes = { "dress", "shirt", "pants", "skirt", "jeans", "sweater", "jacket", "hat", "shoes", "socks", "gloves", "scarf", "bra", "panties", "boots", "junper", "blouse" };
+vector <string> wordsItems = { "pencil", "book", "chair", "table", "computer", "desk", "notebook", "pen", "calculator", "clock", "backpack", "ruler", "scissors", "marker", "board" };
+vector <string> wordsCountries = { "Brazil", "Canada", "Germany", "Japan", "China", "Italy", "England", "Russia", "France", "Australia", "India", "Spain", "USA", "Mexico", "Poland", "Australia", "Cermany", "nepal", "thailand" };
+
+string word, guessedLetters;
+int length, key;
+
+// Класс необходимый для работы с категориями и словами 
+// (в том числе загрузка слов из файлов)
+class WordBank {
+private:
+    std::map<std::string, std::vector<std::string>> categories;
+public:
+    void loadWordsFromDirectory(const std::string& directoryPath) {
+        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+            if (entry.is_regular_file()) {
+                string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
+                std::vector<std::string> wordsInCategory;
+
+                std::ifstream file(entry.path());
+                std::string word;
+                while (std::getline(file, word)) {
+                    if (!word.empty()) {
+                        wordsInCategory.push_back(word);
+                    }
+                }
+
+                categories[categoryName] = wordsInCategory;
+            }
+            
+        }
+        std::cerr << "Failed to open file: " << filename << endl;
+        return;
+    }
+
+
+    /*
+    WordBank() {
+        categories = {
+            {"Animals", {"cat", "dolphin", "elephant", "kangaroo", "wolf"}},
+            {"Countries", {"brazil", "canada", "germany", "nepal", "thailand"}},
+            {"Foods", {"pizza", "sushi", "taco", "pasta", "salad"}}
+        };
+    }
+    */
+
+    std::string getRandomWord(const std::string& category) {
+        std::srand(static_cast<unsigned int>(std::time(nullptr)));
+        const auto& words = categories[category];
+        int index = std::rand() % words.size();
+        return words[index];
+    }
+
+    void displayCategories() {
+        std::cout << "Available Categories:\n";
+        for (const auto& category : categories) {
+            std::cout << "- " << category.first << "\n";
+        }
+    }
+};
+
+class HangmanGame {
+private:
+    std::string wordToGuess;
+    std::string guessedWord;
+    std::vector<char> incorrectGuesses;
+    int maxTries;
+    WordBank wordBank;
+
+    void updateGuessedWord(char letter) {
+        for (size_t i = 0; i < wordToGuess.length(); ++i) {
+            if (wordToGuess[i] == letter) {
+                guessedWord[i] = letter;
+            }
+        }
+    }
+
+public:
+    HangmanGame(const std::string& category) : maxTries(6) {
+        wordToGuess = wordBank.getRandomWord(category);
+        guessedWord = std::string(wordToGuess.length(), '_');
+    }
+
+    bool guess(char letter) {
+        if (wordToGuess.find(letter) != std::string::npos) {
+            updateGuessedWord(letter);
+            return true;
+        }
+        else {
+            incorrectGuesses.push_back(letter);
+            return false;
+        }
+    }
+
+    bool isGameOver() {
+        return incorrectGuesses.size() >= maxTries || guessedWord == wordToGuess;
+    }
+
+    bool isGameWon() {
+        return guessedWord == wordToGuess;
+    }
+
+    void displayGame() {
+        std::cout << "\nIncorrect Guesses: ";
+        for (char letter : incorrectGuesses) {
+            std::cout << letter << ' ';
+        }
+        std::cout << "\nWord to Guess: ";
+        for (char letter : guessedWord) {
+            std::cout << letter << ' ';
+        }
+        std::cout << "\n";
+    }
+
+    int getRemainingTries() {
+        return maxTries - incorrectGuesses.size();
+    }
+};
+
+
+// Класс необходимый для вывода результатов в консоль
+class Results {
+    void SetXY(short X, short Y) {
+        COORD coord = { X, Y };
+        SetConsoleCursorPosition(hStdOut, coord);
+    }
+    void SetColor(ConsoleColor text, ConsoleColor background) {
+        SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
+    }
+};
+
+
+
+
+
+
+
 
 void Start() {
     SetColor(Cyan, Black); SetXY(12, 3); cout << "To start the game, select a theme:" << endl;
@@ -98,25 +210,25 @@ string printWithUnderlines(const string& text) {
 void ChooseWord() {
     SetColor(Cyan, Black); SetXY(3, 17);
     if (key == 'a' || key == 'A' || key == 1) {
-        word = wordsA[rand() % wordsA.size()];
+        word = wordsAnimal[rand() % wordsAnimal.size()];
         cout << "Theme: animals." <<  endl;
     }
-    else if (key == 'p' || key == 'P' || key == 2) {
+    if (key == 'p' || key == 'P' || key == 2) {
         word = wordsP[rand() % wordsP.size()];
         
         cout << "Theme: plants." <<  endl;
     }
-    else if (key == 'f' || key == 'F' || key == 3) {
-        word = wordsF[rand() % wordsF.size()];
+    if (key == 'f' || key == 'F' || key == 3) {
+        word = wordsFruits[rand() % wordsF.size()];
       
         cout << "Theme: food." << endl;
     }
-    else if (key == 'c' || key == 'C' || key == 4) {
+    if (key == 'c' || key == 'C' || key == 4) {
         word = wordsC[rand() % wordsC.size()];
         cout << "Theme: clothes." << endl;
     }
-    else if (key == 'i' || key == 'I' || key == 5) {
-        word = wordsI[rand() % wordsI.size()];
+    if (key == 'i' || key == 'I' || key == 5) {
+        word = wordsItems[rand() % wordsI.size()];
         cout << "Theme: item." <<  endl;
     }
 }
