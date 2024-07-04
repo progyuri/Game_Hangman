@@ -15,6 +15,13 @@ using namespace std;
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
+void SetXY(short X, short Y) {
+    COORD coord = { X, Y };
+    SetConsoleCursorPosition(hStdOut, coord);
+}
+void SetColor(ConsoleColor text, ConsoleColor background) {
+    SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
+}
 enum ConsoleColor {
     Black = 0,
     Blue = 1,
@@ -31,16 +38,17 @@ enum ConsoleColor {
     White = 15
 };
 
+
+/*
 vector <int> wordsKey = { 1, 2 ,3 ,4 ,5 ,6};
 vector <string> wordsAnimals = { "fish", "dog", "cat", "elephant", "lion", "tiger", "monkey", "zebra", "giraffe", "bear", "kangaroo", "koala", "penguin", "seal", "hippo", "chiken", "wolf", "panda", "frog", "owl", "bunny", "ladybug", "fox", "dragonfly", "sheep", "octopus", "butterfly", "whale", "sheep", "horse", "goat", "pig", "snake" };
 vector <string> wordsPlants = { "flower", "tree", "grass", "sunflower", "rose", "cactus", "lily", "dandelion", "tulip",  "oak", "birch", "pine", "iris", "lotus", "violet", "dandelion" };
-vector <string> wordsFruits = { "apple", "peach", "banana", "orange", "strawberry", "grapefruit", "carrot", "potato", "sandwich", "chicken", "beef", "salad", "cake" };
+vector <string> wordsFoods = { "apple", "peach", "banana", "orange", "strawberry", "grapefruit", "carrot", "potato", "sandwich", "chicken", "beef", "salad", "cake" };
 vector <string> wordsClothes = { "dress", "shirt", "pants", "skirt", "jeans", "sweater", "jacket", "hat", "shoes", "socks", "gloves", "scarf", "bra", "panties", "boots", "junper", "blouse" };
 vector <string> wordsItems = { "pencil", "book", "chair", "table", "computer", "desk", "notebook", "pen", "calculator", "clock", "backpack", "ruler", "scissors", "marker", "board" };
 vector <string> wordsCountries = { "Brazil", "Canada", "Germany", "Japan", "China", "Italy", "England", "Russia", "France", "Australia", "India", "Spain", "USA", "Mexico", "Poland", "Australia", "Cermany", "nepal", "thailand" };
+*/
 
-string word, guessedLetters;
-int length, key;
 
 // Класс необходимый для работы с категориями и словами 
 // (в том числе загрузка слов из файлов)
@@ -51,10 +59,14 @@ public:
     void loadWordsFromDirectory(const std::string& directoryPath) {
         for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
             if (entry.is_regular_file()) {
-                string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
+                std::string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
                 std::vector<std::string> wordsInCategory;
 
                 std::ifstream file(entry.path());
+                if (!file) {
+                    std::cerr << "Failed to open file: " << entry.path() << std::endl;
+                    continue; // Продолжаем обработку следующих файлов, даже если один не удалось открыть
+                }
                 std::string word;
                 while (std::getline(file, word)) {
                     if (!word.empty()) {
@@ -64,10 +76,7 @@ public:
 
                 categories[categoryName] = wordsInCategory;
             }
-            
         }
-        std::cerr << "Failed to open file: " << filename << endl;
-        return;
     }
 
 
@@ -81,10 +90,10 @@ public:
     }
     */
 
-    std::string getRandomWord(const std::string& category) {
-        std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    string getRandomWord(const string& category) {
+        srand(static_cast<unsigned int>(time(nullptr)));
         const auto& words = categories[category];
-        int index = std::rand() % words.size();
+        int index = rand() % words.size();
         return words[index];
     }
 
@@ -96,26 +105,29 @@ public:
     }
 };
 
+
 class HangmanGame {
 private:
-    std::string wordToGuess;
-    std::string guessedWord;
-    std::vector<char> incorrectGuesses;
+    string wordToGuess;   //word
+    string guessedLetters;   //
+    vector<char> incorrectGuesses;
     int maxTries;
+    int length;
+    int key;
     WordBank wordBank;
 
     void updateGuessedWord(char letter) {
         for (size_t i = 0; i < wordToGuess.length(); ++i) {
             if (wordToGuess[i] == letter) {
-                guessedWord[i] = letter;
+                guessedLetters[i] = letter;
             }
         }
     }
 
 public:
-    HangmanGame(const std::string& category) : maxTries(6) {
+    HangmanGame(const std::string& category) : maxTries(7) {
         wordToGuess = wordBank.getRandomWord(category);
-        guessedWord = std::string(wordToGuess.length(), '_');
+        guessedLetters = string(wordToGuess.length(), '_ ');
     }
 
     bool guess(char letter) {
@@ -130,11 +142,11 @@ public:
     }
 
     bool isGameOver() {
-        return incorrectGuesses.size() >= maxTries || guessedWord == wordToGuess;
+        return incorrectGuesses.size() >= maxTries || guessedLetters == wordToGuess;
     }
 
     bool isGameWon() {
-        return guessedWord == wordToGuess;
+        return guessedLetters == wordToGuess;
     }
 
     void displayGame() {
@@ -143,7 +155,7 @@ public:
             std::cout << letter << ' ';
         }
         std::cout << "\nWord to Guess: ";
-        for (char letter : guessedWord) {
+        for (char letter : guessedLetters) {
             std::cout << letter << ' ';
         }
         std::cout << "\n";
@@ -157,12 +169,13 @@ public:
 
 // Класс необходимый для вывода результатов в консоль
 class Results {
-    void SetXY(short X, short Y) {
-        COORD coord = { X, Y };
-        SetConsoleCursorPosition(hStdOut, coord);
-    }
-    void SetColor(ConsoleColor text, ConsoleColor background) {
-        SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
+    void GameStart() {
+        SetColor(Cyan, Black); SetXY(12, 3); 
+        cout << "To start the game, select a theme:" << endl;
+        SetColor(LightCyan, Black);
+   }
+    void ShowCategories() {
+
     }
 };
 
@@ -174,8 +187,7 @@ class Results {
 
 
 void Start() {
-    SetColor(Cyan, Black); SetXY(12, 3); cout << "To start the game, select a theme:" << endl;
-    SetColor(LightCyan, Black);
+    
     SetXY(12, 5); cout << "Animals - 'A'.       Plants - 'P'." << endl;
     SetXY(24, 7); cout << "Food - 'F'." << endl;
     SetXY(12, 9); cout << "Clothes - 'C'.        Items - 'I'." << endl;

@@ -1,0 +1,15 @@
+pencil 
+book 
+chair 
+table 
+computer 
+desk 
+notebook 
+pen 
+calculator 
+clock 
+backpack 
+ruler 
+scissors 
+marker 
+board
