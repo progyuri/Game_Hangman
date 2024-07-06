@@ -11,18 +11,13 @@
 #include <conio.h> 
 #include <cstdlib>
 #include <map>
+#include <algorithm>
 
 using namespace std;
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
-void SetXY(short X, short Y) {
-    COORD coord = { X, Y };
-    SetConsoleCursorPosition(hStdOut, coord);
-}
-void SetColor(ConsoleColor text, ConsoleColor background) {
-    SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
-}
+
 
 enum ConsoleColor {
     Black = 0,
@@ -46,7 +41,7 @@ enum ConsoleColor {
 class WordBank {
 public:
     std::map<std::string, std::vector<std::string>> categories;
-    void loadWordsFromDirectory(const std::string& directoryPath) {
+    void loadWordsFromDirectory(string directoryPath) {
         for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
             if (entry.is_regular_file()) {
                 string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
@@ -60,6 +55,7 @@ public:
                 std::string word;
                 while (std::getline(file, word)) {
                     if (!word.empty()) {
+                        //word = std::trim(word)
                         wordsInCategory.push_back(word);
                     }
                 }
@@ -70,44 +66,53 @@ public:
     }
 
 
-   string getRandomWord(const string& category) {
-        srand(static_cast<unsigned int>(time(nullptr)));
-        const auto& words = categories[category];
+    string getRandomWord(string category) {
+        auto words = categories[category];
         int index = rand() % words.size();
         return words[index];
     }
+
 };
 
 
 class HangmanGame {
 private:
-    string wordToGuess;
-
-    vector<char> incorrectGuesses;
-    int maxTries;
-    int length;
-    int key;
-    WordBank wordBank;
+   int maxTries;
+   
 
     void updateGuessedWord(char letter) {
         for (size_t i = 0; i < wordToGuess.length(); ++i) {
             if (wordToGuess[i] == letter) {
                 guessedLetters[i] = letter;
+                showguessedLetters[2*i] = letter;
             }
         }
     }
 
 public:
+    vector<char> incorrectGuesses;
     string selectcategory;
-    string guessedLetters;   //
+    string guessedLetters ;   
+    string showguessedLetters;   //
+    string wordToGuess;
 
     HangmanGame();
-    HangmanGame(int _maxTries,const std::string& word) : maxTries(_maxTries), wordToGuess(word), guessedLetters(word.length(), '_ ') {}
-    HangmanGame(const std::string& category, int _maxTries) : maxTries(_maxTries) {
-        wordToGuess = wordBank.getRandomWord(category);
-        guessedLetters = string(wordToGuess.length(), '_ ');
+    HangmanGame(int _maxTries,const string& word) : maxTries(_maxTries), wordToGuess(word) {
+        SetguessedLetters(word);
+    }
+    HangmanGame(const std::string& category, int _maxTries) : maxTries(_maxTries), selectcategory(category) {
+        //wordToGuess = WordBank::getRandomWord(category);
+        //guessedLetters = string(wordToGuess.length(), '_ ');
     }
 
+    void SetguessedLetters(const string& word) {
+       
+		guessedLetters = "";
+        for (size_t i = 0; i < wordToGuess.length(); i++) {
+           guessedLetters += "_";
+           showguessedLetters += "_ ";
+        }
+    }
     bool guess(char letter) {
         if (wordToGuess.find(letter) != std::string::npos) {
             updateGuessedWord(letter);
@@ -127,18 +132,6 @@ public:
         return guessedLetters == wordToGuess;
     }
 
-    void displayGame() {
-        std::cout << "\nIncorrect Guesses: ";
-        for (char letter : incorrectGuesses) {
-            std::cout << letter << ' ';
-        }
-        std::cout << "\nWord to Guess: ";
-        for (char letter : guessedLetters) {
-            std::cout << letter << ' ';
-        }
-        std::cout << "\n";
-    }
-
     int getRemainingTries() {
         return maxTries - incorrectGuesses.size();
     }
@@ -151,10 +144,19 @@ public:
 // Класс необходимый для красивого вывода результатов в консоль
 class Results {
 public:
+    void SetXY(short X, short Y) {
+        COORD coord = { X, Y };
+        SetConsoleCursorPosition(hStdOut, coord);
+    }
+    void SetColor(ConsoleColor text, ConsoleColor background) {
+        SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
+    }
     void StartShow() {
-        SetColor(LightGreen, Black); SetXY(19, 1);
+        SetColor(LightGreen, Black); 
+        SetXY(19, 1);
         cout << "Welcome to Hangman!" << endl;
-        SetColor(Cyan, Black); SetXY(12, 3); 
+        SetColor(Cyan, Black); 
+        SetXY(12, 3); 
         cout << "To start the game, select a theme:" << endl;    
    }
 
@@ -163,12 +165,13 @@ public:
     }
     string Show_SetCategories(map<std::string, std::vector<std::string>> categories) {
         SetColor(LightCyan, Black);
+        char key=' ';
         vector<char> keys; // Вектор с начальными буквами для categories
         int x = 12, y = 5; // Начальная позиция для вывода категорий
         for (const auto& category : categories) {
             SetXY(x, y);
             std::string categoryName = category.first;
-            char key = static_cast<char>(std::toupper(categoryName[0])); // Получаем клавишу для категории по первой букве файла категории
+            key = static_cast<char>(std::toupper(categoryName[0])); // Получаем клавишу для категории по первой букве файла категории
             keys.push_back(key);
             // Выводим название категории и соответствующую ей клавишу
             cout << categoryName << " - '" << key << "'." << endl;
@@ -176,12 +179,16 @@ public:
             // Изменяем позицию для следующей категории
             y += 2; // Переходим на две строки вниз после каждой категории для наглядного разделения
         }
-
+        
+        //Выводим случайную категорию и соответствующую еей клавишу
+        SetXY(12, y);
+        cout << "Random category - R." << endl;
+        y += 2;
         SetColor(DarkGray, Black);
         SetXY(10, y + 2); // Смещаем указатель ниже последней категории
         cout << "(To select, press the appropriate key)" << endl;
 
-        char key;
+        key = ' ';
         while (find(keys.begin(), keys.end(), toupper(key)) == keys.end()) {
 
             if (_kbhit()) {
@@ -192,13 +199,13 @@ public:
                 }
             }
         }
+        
 
-        for (const auto& category : categories) {
-            if (toupper(category.first[0]) == toupper(key)) {
+        for (auto category : categories) {
+            if (toupper(category.first[0]) == toupper(key)) 
                 return category.first;
-            }
-            else return "";
-        }
+         }
+        return "";
     }
     void Walls() {
         SetColor(Blue, Black);
@@ -270,11 +277,10 @@ public:
         SetXY(m, 15);
         cout << guessedLetters << " ";
     }
-    char GetLetter() {
-        int enterX = 20;
+    char GetLetter(int incorrectGuesses) {
         char guess;
         SetColor(LightCyan, Black);
-        SetXY(enterX, 18);
+        SetXY(20 + 2 * incorrectGuesses, 18);
         cin >> guess;
         return guess;
     }
@@ -320,14 +326,19 @@ public:
 // второй параметр количество попыток
 // g++ -o game game.cpp. / game mysteryword 5
 void main(int argc, char* argv[]) {
-    srand(time(nullptr));
+    srand(time(NULL));
     std::string guessedWord;
     int attempts = 7; // Default number of attempts
     WordBank wordBank;
     Results results;
-    HangmanGame hangmanGame;
+    //   HangmanGame hangmanGame;
     results.StartShow();
-
+    wordBank.loadWordsFromDirectory(".\\categories");
+    HangmanGame hangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+    hangmanGame.wordToGuess=wordBank.getRandomWord(hangmanGame.selectcategory);
+    hangmanGame.SetguessedLetters(hangmanGame.wordToGuess);
+    
+    
     // Check if at least one argument is passed
     if (argc > 1) {
         guessedWord = argv[1]; // First argument is the guessed word
@@ -339,50 +350,53 @@ void main(int argc, char* argv[]) {
 
     if (guessedWord.empty()) {
         // Show and selet Categories and user to enter category
-        wordBank.loadWordsFromDirectory("\\categories");
-        hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+        //wordBank.loadWordsFromDirectory("\\categories");
+        //hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
 
     }
     else
         hangmanGame = HangmanGame(attempts,guessedWord);
 
-
-    while (true) {
-
+    
+    while (true ) {
+        char guess, key = '0' ;
         results.clearScreen();
         results.Walls();
-        
+
         results.ShowCategoryWord(hangmanGame.selectcategory);
-        
+
         results.ShowEnterletter();
+
+
         
-        
-        char guess,key;
 
-        while (hangmanGame.isGameOver()) {
+        while ((!hangmanGame.isGameOver()) ) {
+                results.printHangman(hangmanGame.getRemainingTries());
+                results.Showattempts(hangmanGame.getRemainingTries());
 
-            results.printHangman(hangmanGame.getRemainingTries());
-            results.Showattempts(hangmanGame.getRemainingTries());
+                results.printGuessedWord(hangmanGame.showguessedLetters);
 
-            results.printGuessedWord(hangmanGame.guessedLetters);
-
-            results.PrintResultGuessedLeter(hangmanGame.guess(results.GetLetter()));
+                results.PrintResultGuessedLeter(hangmanGame.guess(results.GetLetter(hangmanGame.incorrectGuesses.size())));
 
 
-            results.printHangman(hangmanGame.getRemainingTries());
+                results.printHangman(hangmanGame.getRemainingTries());
+
+               
+         }
 
             results.PrintResultGame(hangmanGame.isGameWon(), hangmanGame.getWordToGuess());
-
             results.PrintMessageNewGame();
 
-            while (key != 's' && key != 'S' && key != 27) {
-                if (_kbhit()) {
+            while (key != 's' && key != 'S' && key != VK_ESCAPE) {
+                if (_kbhit()) 
                     key = _getch();
-                    results.clearScreen();
-                }
             }
             if (key == 27) { break; }
-
+            results.clearScreen();
+            results.StartShow();
             hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+            hangmanGame.wordToGuess = wordBank.getRandomWord(hangmanGame.selectcategory);
+            hangmanGame.SetguessedLetters(hangmanGame.wordToGuess);
         }
+    
 }
