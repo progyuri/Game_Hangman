@@ -1,8 +1,9 @@
-﻿// Game_Vyselica.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
+﻿// Game_Vyselica.cpp
 //
 
 #include <iostream>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <ctime>
@@ -22,6 +23,7 @@ void SetXY(short X, short Y) {
 void SetColor(ConsoleColor text, ConsoleColor background) {
     SetConsoleTextAttribute(hStdOut, (WORD)((background) | text));
 }
+
 enum ConsoleColor {
     Black = 0,
     Blue = 1,
@@ -39,30 +41,18 @@ enum ConsoleColor {
 };
 
 
-/*
-vector <int> wordsKey = { 1, 2 ,3 ,4 ,5 ,6};
-vector <string> wordsAnimals = { "fish", "dog", "cat", "elephant", "lion", "tiger", "monkey", "zebra", "giraffe", "bear", "kangaroo", "koala", "penguin", "seal", "hippo", "chiken", "wolf", "panda", "frog", "owl", "bunny", "ladybug", "fox", "dragonfly", "sheep", "octopus", "butterfly", "whale", "sheep", "horse", "goat", "pig", "snake" };
-vector <string> wordsPlants = { "flower", "tree", "grass", "sunflower", "rose", "cactus", "lily", "dandelion", "tulip",  "oak", "birch", "pine", "iris", "lotus", "violet", "dandelion" };
-vector <string> wordsFoods = { "apple", "peach", "banana", "orange", "strawberry", "grapefruit", "carrot", "potato", "sandwich", "chicken", "beef", "salad", "cake" };
-vector <string> wordsClothes = { "dress", "shirt", "pants", "skirt", "jeans", "sweater", "jacket", "hat", "shoes", "socks", "gloves", "scarf", "bra", "panties", "boots", "junper", "blouse" };
-vector <string> wordsItems = { "pencil", "book", "chair", "table", "computer", "desk", "notebook", "pen", "calculator", "clock", "backpack", "ruler", "scissors", "marker", "board" };
-vector <string> wordsCountries = { "Brazil", "Canada", "Germany", "Japan", "China", "Italy", "England", "Russia", "France", "Australia", "India", "Spain", "USA", "Mexico", "Poland", "Australia", "Cermany", "nepal", "thailand" };
-*/
-
-
 // Класс необходимый для работы с категориями и словами 
 // (в том числе загрузка слов из файлов)
 class WordBank {
-private:
-    std::map<std::string, std::vector<std::string>> categories;
 public:
+    std::map<std::string, std::vector<std::string>> categories;
     void loadWordsFromDirectory(const std::string& directoryPath) {
         for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
             if (entry.is_regular_file()) {
-                std::string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
-                std::vector<std::string> wordsInCategory;
+                string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
+                vector<std::string> wordsInCategory;
 
-                std::ifstream file(entry.path());
+                ifstream file(entry.path());
                 if (!file) {
                     std::cerr << "Failed to open file: " << entry.path() << std::endl;
                     continue; // Продолжаем обработку следующих файлов, даже если один не удалось открыть
@@ -80,36 +70,19 @@ public:
     }
 
 
-    /*
-    WordBank() {
-        categories = {
-            {"Animals", {"cat", "dolphin", "elephant", "kangaroo", "wolf"}},
-            {"Countries", {"brazil", "canada", "germany", "nepal", "thailand"}},
-            {"Foods", {"pizza", "sushi", "taco", "pasta", "salad"}}
-        };
-    }
-    */
-
-    string getRandomWord(const string& category) {
+   string getRandomWord(const string& category) {
         srand(static_cast<unsigned int>(time(nullptr)));
         const auto& words = categories[category];
         int index = rand() % words.size();
         return words[index];
-    }
-
-    void displayCategories() {
-        std::cout << "Available Categories:\n";
-        for (const auto& category : categories) {
-            std::cout << "- " << category.first << "\n";
-        }
     }
 };
 
 
 class HangmanGame {
 private:
-    string wordToGuess;   //word
-    string guessedLetters;   //
+    string wordToGuess;
+
     vector<char> incorrectGuesses;
     int maxTries;
     int length;
@@ -125,7 +98,12 @@ private:
     }
 
 public:
-    HangmanGame(const std::string& category) : maxTries(7) {
+    string selectcategory;
+    string guessedLetters;   //
+
+    HangmanGame();
+    HangmanGame(int _maxTries,const std::string& word) : maxTries(_maxTries), wordToGuess(word), guessedLetters(word.length(), '_ ') {}
+    HangmanGame(const std::string& category, int _maxTries) : maxTries(_maxTries) {
         wordToGuess = wordBank.getRandomWord(category);
         guessedLetters = string(wordToGuess.length(), '_ ');
     }
@@ -164,236 +142,247 @@ public:
     int getRemainingTries() {
         return maxTries - incorrectGuesses.size();
     }
+    string getWordToGuess() {
+		return wordToGuess;
+	}
 };
 
 
-// Класс необходимый для вывода результатов в консоль
+// Класс необходимый для красивого вывода результатов в консоль
 class Results {
-    void GameStart() {
+public:
+    void StartShow() {
+        SetColor(LightGreen, Black); SetXY(19, 1);
+        cout << "Welcome to Hangman!" << endl;
         SetColor(Cyan, Black); SetXY(12, 3); 
-        cout << "To start the game, select a theme:" << endl;
-        SetColor(LightCyan, Black);
+        cout << "To start the game, select a theme:" << endl;    
    }
-    void ShowCategories() {
 
+    void clearScreen() {
+        system("cls");
     }
-};
+    string Show_SetCategories(map<std::string, std::vector<std::string>> categories) {
+        SetColor(LightCyan, Black);
+        vector<char> keys; // Вектор с начальными буквами для categories
+        int x = 12, y = 5; // Начальная позиция для вывода категорий
+        for (const auto& category : categories) {
+            SetXY(x, y);
+            std::string categoryName = category.first;
+            char key = static_cast<char>(std::toupper(categoryName[0])); // Получаем клавишу для категории по первой букве файла категории
+            keys.push_back(key);
+            // Выводим название категории и соответствующую ей клавишу
+            cout << categoryName << " - '" << key << "'." << endl;
 
+            // Изменяем позицию для следующей категории
+            y += 2; // Переходим на две строки вниз после каждой категории для наглядного разделения
+        }
 
+        SetColor(DarkGray, Black);
+        SetXY(10, y + 2); // Смещаем указатель ниже последней категории
+        cout << "(To select, press the appropriate key)" << endl;
 
+        char key;
+        while (find(keys.begin(), keys.end(), toupper(key)) == keys.end()) {
 
-
-
-
-
-void Start() {
-    
-    SetXY(12, 5); cout << "Animals - 'A'.       Plants - 'P'." << endl;
-    SetXY(24, 7); cout << "Food - 'F'." << endl;
-    SetXY(12, 9); cout << "Clothes - 'C'.        Items - 'I'." << endl;
-    SetXY(20, 11); cout << "Random theme - 'R'." << endl;
-    SetColor(DarkGray, Black); SetXY(10, 13); cout << "(To select, press the appropriate key)" << endl;
-
-    while (!(key == 'a' || key == 'A' || key == 'p' || key == 'P' || key == 'f' || key == 'F' || key == 'c' || key == 'C' || key == 'i' || key == 'I')) {
-        if (_kbhit()) {
-            key = _getch();
-            if (key == 'r' || key == 'R') {
-                key = wordsKey[rand() % wordsKey.size()];
-                break;
+            if (_kbhit()) {
+                key = _getch();
+                if (key == 'r' || key == 'R') {
+                    key = keys[rand() % keys.size()];
+                    break;
+                }
             }
         }
-    }
-}
 
-string printWithUnderlines(const string& text) {
-    string u_text;
-	for (char letter : text) {
-		if (isalpha(letter)) {
-			u_text += "_ ";
-		}
-		else {
-			u_text += letter;
-		}
-	}
-	return u_text;
-}
-
-
-void ChooseWord() {
-    SetColor(Cyan, Black); SetXY(3, 17);
-    if (key == 'a' || key == 'A' || key == 1) {
-        word = wordsAnimal[rand() % wordsAnimal.size()];
-        cout << "Theme: animals." <<  endl;
-    }
-    if (key == 'p' || key == 'P' || key == 2) {
-        word = wordsP[rand() % wordsP.size()];
-        
-        cout << "Theme: plants." <<  endl;
-    }
-    if (key == 'f' || key == 'F' || key == 3) {
-        word = wordsFruits[rand() % wordsF.size()];
-      
-        cout << "Theme: food." << endl;
-    }
-    if (key == 'c' || key == 'C' || key == 4) {
-        word = wordsC[rand() % wordsC.size()];
-        cout << "Theme: clothes." << endl;
-    }
-    if (key == 'i' || key == 'I' || key == 5) {
-        word = wordsItems[rand() % wordsI.size()];
-        cout << "Theme: item." <<  endl;
-    }
-}
-
-void Walls() {
-    SetColor(Blue, Black);
-
-    for (int m = 15; m < 31; m++) {
-        SetXY(m, 5); cout << "*";
-        SetXY(m, 14); cout << "*";
-    }
-
-    for (int m = 6; m < 14; m++) {
-        SetXY(15, m); cout << "*";
-        SetXY(30, m); cout << "*";
-    }
-}
-
-bool isWordGuessed() {
-    for (char c : word) {
-        if (guessedLetters.find(c) == string::npos) {
-            return false;
+        for (const auto& category : categories) {
+            if (toupper(category.first[0]) == toupper(key)) {
+                return category.first;
+            }
+            else return "";
         }
     }
-    return true;
-}
+    void Walls() {
+        SetColor(Blue, Black);
 
-void printHangman(int attemptsLeft) {
-    SetColor(Brown, Black);
-    if (attemptsLeft == 7) {
-        for (int m = 19; m < 26; m++) {
-            SetXY(m, 6); cout << "_";
+        for (int m = 15; m < 31; m++) {
+            SetXY(m, 5); cout << "*";
+            SetXY(m, 14); cout << "*";
         }
 
-        for (int m = 7; m < 13; m++) {
-            SetXY(18, m); cout << "|";
+        for (int m = 6; m < 14; m++) {
+            SetXY(15, m); cout << "*";
+            SetXY(30, m); cout << "*";
         }
     }
-    else if (attemptsLeft == 6) {
-        SetColor(DarkGray, Black); SetXY(26, 7); cout << "|" << endl;
-    }
-    else if (attemptsLeft == 5) {
-        SetColor(White, Black); SetXY(26, 8); cout << "0" << endl;
-    }
-    else if (attemptsLeft == 4) {
-        SetColor(White, Black); SetXY(26, 9); cout << "|" << endl;
-    }
-    else if (attemptsLeft == 3) {
-        SetColor(White, Black); SetXY(25, 9); cout << "/" << endl;
-    }
-    else if (attemptsLeft == 2) {
-        SetColor(White, Black); SetXY(27, 9); cout << "\\" << endl;
-    }
-    else if (attemptsLeft == 1) {
-        SetColor(White, Black); SetXY(25, 10); cout << "/" << endl;
-    }
-    else if (attemptsLeft == 0) {
-        SetColor(White, Black); SetXY(27, 10); cout << "\\" << endl;
-    }
-}
 
-void printGuessedWord() {
-    SetColor(LightCyan, Black);
-    int m = (23 - length / 2);
-    SetXY(m, 15);
-    for (char c : word) {
-        if (guessedLetters.find(c) != string::npos) {
-            cout << c << " ";
+    void printHangman(int attemptsLeft) {
+        switch (attemptsLeft) {
+        case 7:
+            SetColor(Brown, Black);
+            for (int m = 19; m < 26; m++) {
+                SetXY(m, 6); cout << "_";
+            }
+            for (int m = 7; m < 13; m++) {
+                SetXY(18, m); cout << "|";
+            }
+            break;
+        case 6:
+            SetColor(DarkGray, Black); SetXY(26, 7); cout << "|";
+            break;
+        case 5:
+            SetColor(White, Black); SetXY(26, 8); cout << "0";
+            break;
+        case 4:
+            SetColor(White, Black); SetXY(26, 9); cout << "|";
+            break;
+        case 3:
+            SetColor(White, Black); SetXY(25, 9); cout << "/";
+            break;
+        case 2:
+            SetColor(White, Black); SetXY(27, 9); cout << "\\";
+            break;
+        case 1:
+            SetColor(White, Black); SetXY(25, 10); cout << "/";
+            break;
+        case 0:
+            SetColor(White, Black); SetXY(27, 10); cout << "\\";
+            break;
+        default:
+            // Handle invalid attemptsLeft values, if necessary
+            break;
         }
-        else { cout << "_ "; }
     }
-}
+    void ShowCategoryWord(const string& category) {
+        SetColor(Cyan, Black); SetXY(3, 17);
+        cout << "Theme: "<< category<<"." << endl;
+        }
 
-void clearScreen() {
-    system("cls");
-}
-
-int main() {
-
-    srand(time(0));
-    SetColor(LightGreen, Black); SetXY(19, 1); 
-    cout << "Welcome to Hangman!" << endl;
-
-    while (true) {
-
-        Start();
-        clearScreen();
-
-        Walls();
-        SetColor(LightRed, Black); SetXY(3, 50); cout << "The author of this something - Mustafaev Emil aka DarkmMoonDm.";
-
-        ChooseWord();
-        length = word.length();
-
-        int attemptsLeft = 7;
-
+    void ShowEnterletter() {
         SetXY(3, 18); cout << "Enter the letter: ";
-
+    }
+    void Showattempts(int attemptsLeft) {
+        SetColor(Cyan, Black);
+        SetXY(5, 2);
+        cout << "You have " << attemptsLeft << " attempts to guess the word.";
+    }
+    void printGuessedWord(string guessedLetters) {
+        SetColor(LightCyan, Black);
+        int m = (23 - guessedLetters.length() / 2);
+        SetXY(m, 15);
+        cout << guessedLetters << " ";
+    }
+    char GetLetter() {
         int enterX = 20;
         char guess;
+        SetColor(LightCyan, Black);
+        SetXY(enterX, 18);
+        cin >> guess;
+        return guess;
+    }
+    
+    void PrintResultGuessedLeter(bool flagguessletter) {
+        SetXY(19, 4);
+        if (flagguessletter) {
+			SetColor(Green, Black);
+			cout << "Correct!" << endl;
+		}
+		else {
+			SetColor(Red, Black);
+			cout << " Wrong! " << endl;
+		}
+    }
+    void PrintResultGame(bool flagwin,string word) {
+        if (flagwin) {
 
-        while (attemptsLeft > 0 && !isWordGuessed()) {
-
-            SetColor(Cyan, Black); SetXY(5, 2); cout << "You have   attempts to guess the word.";
-            SetXY(14, 2); cout << attemptsLeft;
-
-            printHangman(attemptsLeft);
-
-            SetColor(Cyan, Black);
-            printGuessedWord();
-
-            enterX++;
-            SetColor(LightCyan, Black); SetXY(enterX, 18);
-            cin >> guess;
-
-            if (word.find(guess) != string::npos) {
-                SetColor(Green, Black); SetXY(19, 4); cout << "Correct!" << endl;
-                guessedLetters += guess;
-            }
-            else {
-                SetColor(Red, Black); SetXY(19, 4); cout << " Wrong! " << endl;
-                attemptsLeft--;
-            }
-        }
-
-        printHangman(attemptsLeft);
-
-        if (isWordGuessed()) {
-            int m = (23 - length / 2);
+            int m = (23 - word.length()/ 2);
             SetColor(LightCyan, Black); SetXY(m, 15); cout << word;
-            m = 58 - ((39 + length) / 2);
+            m = 58 - ((39 + word.length()) / 2);
             SetColor(Green, Black); SetXY(m, 8); cout << "Congratulations, you guessed the word: " << word << '.' << endl;
         }
         else
         {
             SetColor(Cyan, Black); SetXY(14, 2); cout << "0";
-            int m = 58 - ((30 + length) / 2);
+            int m = 58 - ((30 + word.length()) / 2);
             SetColor(Red, Black); SetXY(m, 8); cout << "You couldn't guess the word: " << word << '.' << endl;
         }
-
-        SetColor(White, Black);
-        SetXY(43, 10); cout << "To start a new game, press'S'." << endl;
-        SetXY(48, 11); cout << "To exit, press 'Esc'." << endl;
-        while (key != 's' && key != 'S' && key != 27) {
-            if (_kbhit()) {
-                key = _getch();
-                clearScreen();
-            }
-        }
-        if (key == 27) { break; }
-
-        length, key = 0;
-        word = "";
-        guessedLetters = "";
     }
+
+    void PrintMessageNewGame() {
+    SetColor(White, Black);
+    SetXY(43, 10); cout << "To start a new game, press'S'." << endl;
+    SetXY(48, 11); cout << "To exit, press 'Esc'." << endl;
+    }
+    
+};
+
+
+// Возможна загрузка программы с параметрами
+// первый параметор слово
+// второй параметр количество попыток
+// g++ -o game game.cpp. / game mysteryword 5
+void main(int argc, char* argv[]) {
+    srand(time(nullptr));
+    std::string guessedWord;
+    int attempts = 7; // Default number of attempts
+    WordBank wordBank;
+    Results results;
+    HangmanGame hangmanGame;
+    results.StartShow();
+
+    // Check if at least one argument is passed
+    if (argc > 1) {
+        guessedWord = argv[1]; // First argument is the guessed word
+        // If a second argument is provided, parse it as the number of attempts
+    if (argc > 2) {
+            attempts = stoi(argv[2]); // Convert the second argument to an integer
+        }
+    }
+
+    if (guessedWord.empty()) {
+        // Show and selet Categories and user to enter category
+        wordBank.loadWordsFromDirectory("\\categories");
+        hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+
+    }
+    else
+        hangmanGame = HangmanGame(attempts,guessedWord);
+
+
+    while (true) {
+
+        results.clearScreen();
+        results.Walls();
+        
+        results.ShowCategoryWord(hangmanGame.selectcategory);
+        
+        results.ShowEnterletter();
+        
+        
+        char guess,key;
+
+        while (hangmanGame.isGameOver()) {
+
+            results.printHangman(hangmanGame.getRemainingTries());
+            results.Showattempts(hangmanGame.getRemainingTries());
+
+            results.printGuessedWord(hangmanGame.guessedLetters);
+
+            results.PrintResultGuessedLeter(hangmanGame.guess(results.GetLetter()));
+
+
+            results.printHangman(hangmanGame.getRemainingTries());
+
+            results.PrintResultGame(hangmanGame.isGameWon(), hangmanGame.getWordToGuess());
+
+            results.PrintMessageNewGame();
+
+            while (key != 's' && key != 'S' && key != 27) {
+                if (_kbhit()) {
+                    key = _getch();
+                    results.clearScreen();
+                }
+            }
+            if (key == 27) { break; }
+
+            hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+        }
 }
