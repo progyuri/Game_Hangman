@@ -13,6 +13,8 @@
 #include <map>
 #include <algorithm>
 
+
+
 using namespace std;
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -326,6 +328,8 @@ public:
 // второй параметр количество попыток
 // g++ -o game game.cpp. / game mysteryword 5
 void main(int argc, char* argv[]) {
+    setlocale(LC_ALL, "");
+    
     srand(time(NULL));
     std::string guessedWord;
     int attempts = 7; // Default number of attempts
