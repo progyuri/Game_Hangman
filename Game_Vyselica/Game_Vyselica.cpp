@@ -43,13 +43,12 @@ enum ConsoleColor {
 // (в том числе загрузка слов из файлов)
 class WordBank {
 public:
-    std::map<std::string, std::vector<std::string>> categories;
+    std::map<string, vector<std::string>> categories;
     void loadWordsFromDirectory(string directoryPath) {
-    setlocale(LC_ALL, "");
-        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
+       for (const auto& entry : filesystem::directory_iterator(directoryPath)) {
             if (entry.is_regular_file()) {
                 string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
-                vector<std::string> wordsInCategory;
+                vector<string> wordsInCategory;
 
                 ifstream file(entry.path());
                 if (!file) {
@@ -339,10 +338,8 @@ void main(int argc, char* argv[]) {
     Results results;
     //   HangmanGame hangmanGame;
     results.StartShow();
-    wordBank.loadWordsFromDirectory(".\\categories");
     unique_ptr<HangmanGame> ptr_hangmanGame;
         //hangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
-    
     
     
     // Check if at least one argument is passed
@@ -356,7 +353,7 @@ void main(int argc, char* argv[]) {
 
     if (guessedWord.empty()) {
         // Show and selet Categories and user to enter category
-        wordBank.loadWordsFromDirectory("\\categories");
+        wordBank.loadWordsFromDirectory("categories");
         ptr_hangmanGame = make_unique<HangmanGame>(results.Show_SetCategories(wordBank.categories), attempts);
 
     }
