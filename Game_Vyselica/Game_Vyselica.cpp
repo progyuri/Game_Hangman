@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <map>
 #include <algorithm>
+#include <memory>
 
 
 
@@ -56,6 +57,7 @@ public:
                 }
                 std::string word;
                 while (std::getline(file, word)) {
+                    cout << word << endl;
                     if (!word.empty()) {
                         //word = std::trim(word)
                         wordsInCategory.push_back(word);
@@ -338,9 +340,9 @@ void main(int argc, char* argv[]) {
     //   HangmanGame hangmanGame;
     results.StartShow();
     wordBank.loadWordsFromDirectory(".\\categories");
-    HangmanGame hangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
-    hangmanGame.wordToGuess=wordBank.getRandomWord(hangmanGame.selectcategory);
-    hangmanGame.SetguessedLetters(hangmanGame.wordToGuess);
+    unique_ptr<HangmanGame> ptr_hangmanGame;
+        //hangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+    
     
     
     // Check if at least one argument is passed
@@ -354,41 +356,44 @@ void main(int argc, char* argv[]) {
 
     if (guessedWord.empty()) {
         // Show and selet Categories and user to enter category
-        //wordBank.loadWordsFromDirectory("\\categories");
-        //hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
+        wordBank.loadWordsFromDirectory("\\categories");
+        ptr_hangmanGame = make_unique<HangmanGame>(results.Show_SetCategories(wordBank.categories), attempts);
 
     }
     else
-        hangmanGame = HangmanGame(attempts,guessedWord);
+        ptr_hangmanGame = make_unique <HangmanGame>(attempts,guessedWord);
 
-    
+    ptr_hangmanGame->wordToGuess = wordBank.getRandomWord(ptr_hangmanGame->selectcategory);
+    ptr_hangmanGame->SetguessedLetters(ptr_hangmanGame->wordToGuess);
+
+
     while (true ) {
         char guess, key = '0' ;
         results.clearScreen();
         results.Walls();
 
-        results.ShowCategoryWord(hangmanGame.selectcategory);
+        results.ShowCategoryWord(ptr_hangmanGame->selectcategory);
 
         results.ShowEnterletter();
 
 
         
 
-        while ((!hangmanGame.isGameOver()) ) {
-                results.printHangman(hangmanGame.getRemainingTries());
-                results.Showattempts(hangmanGame.getRemainingTries());
+        while ((!ptr_hangmanGame->isGameOver()) ) {
+                results.printHangman(ptr_hangmanGame->getRemainingTries());
+                results.Showattempts(ptr_hangmanGame->getRemainingTries());
 
-                results.printGuessedWord(hangmanGame.showguessedLetters);
+                results.printGuessedWord(ptr_hangmanGame->showguessedLetters);
 
-                results.PrintResultGuessedLeter(hangmanGame.guess(results.GetLetter(hangmanGame.incorrectGuesses.size())));
+                results.PrintResultGuessedLeter(ptr_hangmanGame->guess(results.GetLetter(ptr_hangmanGame->incorrectGuesses.size())));
 
 
-                results.printHangman(hangmanGame.getRemainingTries());
+                results.printHangman(ptr_hangmanGame->getRemainingTries());
 
                
          }
 
-            results.PrintResultGame(hangmanGame.isGameWon(), hangmanGame.getWordToGuess());
+            results.PrintResultGame(ptr_hangmanGame->isGameWon(), ptr_hangmanGame->getWordToGuess());
             results.PrintMessageNewGame();
 
             while (key != 's' && key != 'S' && key != VK_ESCAPE) {
@@ -398,9 +403,10 @@ void main(int argc, char* argv[]) {
             if (key == 27) { break; }
             results.clearScreen();
             results.StartShow();
-            hangmanGame = HangmanGame(results.Show_SetCategories(wordBank.categories), attempts);
-            hangmanGame.wordToGuess = wordBank.getRandomWord(hangmanGame.selectcategory);
-            hangmanGame.SetguessedLetters(hangmanGame.wordToGuess);
+
+            ptr_hangmanGame = make_unique<HangmanGame>(results.Show_SetCategories(wordBank.categories), attempts);
+            ptr_hangmanGame->wordToGuess = wordBank.getRandomWord(ptr_hangmanGame->selectcategory);
+            ptr_hangmanGame->SetguessedLetters(ptr_hangmanGame->wordToGuess);
         }
     
 }
