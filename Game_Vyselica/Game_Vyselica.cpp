@@ -45,6 +45,7 @@ class WordBank {
 public:
     std::map<std::string, std::vector<std::string>> categories;
     void loadWordsFromDirectory(string directoryPath) {
+    setlocale(LC_ALL, "");
         for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
             if (entry.is_regular_file()) {
                 string categoryName = entry.path().stem().string(); // Извлекаем имя файла без расширения как название категории
@@ -57,7 +58,6 @@ public:
                 }
                 std::string word;
                 while (std::getline(file, word)) {
-                    cout << word << endl;
                     if (!word.empty()) {
                         //word = std::trim(word)
                         wordsInCategory.push_back(word);
