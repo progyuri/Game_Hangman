@@ -13,13 +13,34 @@
 #include <map>
 #include <algorithm>
 #include <memory>
+#include <stdio.h>
 
 
 
 using namespace std;
 
 HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
+void readKey() {
+    HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD prev_mode;
+    GetConsoleMode(hInput, &prev_mode); 
+    SetConsoleMode(hInput, prev_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT)); 
 
+    INPUT_RECORD ir;
+    DWORD read;
+    while (ReadConsoleInput(hInput, &ir, 1, &read)) {
+        if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+            // Обработка нажатой клавиши
+            WCHAR key = ir.Event.KeyEvent.uChar.UnicodeChar;
+            if (key) { // Если key != 0, то это символ
+                wprintf(L"Нажата клавиша: %lc\n", key);
+                break; // Выход после обработки первой нажатой клавиши
+            }
+        }
+    }
+
+    SetConsoleMode(hInput, prev_mode); // Восстановление предыдущего режима консоли
+}
 
 
 enum ConsoleColor {
@@ -143,6 +164,27 @@ public:
 	}
 };
 
+WCHAR _readKey() {
+    HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+    DWORD prev_mode;
+    GetConsoleMode(hInput, &prev_mode);
+    SetConsoleMode(hInput, prev_mode & ~(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT));
+
+    INPUT_RECORD ir;
+    DWORD read;
+    while (ReadConsoleInput(hInput, &ir, 1, &read)) {
+        if (ir.EventType == KEY_EVENT && ir.Event.KeyEvent.bKeyDown) {
+            // Обработка нажатой клавиши
+            WCHAR key = ir.Event.KeyEvent.uChar.UnicodeChar;
+            if (key) { // Если key != 0, то это символ
+                SetConsoleMode(hInput, prev_mode); // Восстановление предыдущего режима консоли
+                return key; // Выход после обработки первой нажатой клавиши
+            }
+        }
+    }
+
+    
+}
 
 // Класс необходимый для красивого вывода результатов в консоль
 class Results {
@@ -190,13 +232,18 @@ public:
         SetColor(DarkGray, Black);
         SetXY(10, y + 2); // Смещаем указатель ниже последней категории
         cout << "(To select, press the appropriate key)" << endl;
-
+        //char upperWch;
+        //locale::global(std::locale(""));  // установка локали для перехвата русских символов
         key = ' ';
+       
         while (find(keys.begin(), keys.end(), toupper(key)) == keys.end()) {
-
+            //cin >> key;
+            //key = _readKey();
+            //cout << key << endl;
+            // wchar_t upperwkey = static_cast<wchar_t>(upperWchInt);
             if (_kbhit()) {
-                key = _getch();
-                if (key == 'r' || key == 'R') {
+               key = _getch();
+            if (key == 'r' || key == 'R') {
                     key = keys[rand() % keys.size()];
                     break;
                 }
@@ -330,9 +377,10 @@ public:
 // g++ -o game game.cpp. / game mysteryword 5
 void main(int argc, char* argv[]) {
     setlocale(LC_ALL, "");
-    
+
+
     srand(time(NULL));
-    std::string guessedWord;
+    string guessedWord;
     int attempts = 7; // Default number of attempts
     WordBank wordBank;
     Results results;
